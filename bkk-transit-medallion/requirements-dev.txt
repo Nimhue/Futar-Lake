@@ -1,0 +1,4 @@
+# Local development and tests (Python 3.10–3.12; PySpark 4.0 needs Java 17+)
+pyspark==4.0.1
+gtfs-realtime-bindings>=1.0.0
+pytest>=8

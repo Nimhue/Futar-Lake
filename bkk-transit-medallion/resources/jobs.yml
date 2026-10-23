@@ -1,0 +1,55 @@
+resources:
+  jobs:
+    bkk_static_daily:
+      name: bkk-static-gtfs-daily
+      schedule:
+        quartz_cron_expression: "0 31 4 * * ?"  # 04:31 Budapest, before the morning peak
+        timezone_id: Europe/Budapest
+      email_notifications:
+        on_failure: [ "${var.notify_email}" ]
+      tasks:
+        - task_key: load_static_gtfs
+          notebook_task:
+            notebook_path: ../src/ingest/load_static_gtfs.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.bkk_transit.name}
+          max_retries: 2
+          min_retry_interval_millis: 300000
+
+    bkk_realtime_poller:
+      name: bkk-realtime-poller
+      # one 55-minute polling run per hour; the gap leaves room for restarts
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: Europe/Budapest
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure: [ "${var.notify_email}" ]
+      tasks:
+        - task_key: poll_realtime
+          notebook_task:
+            notebook_path: ../src/ingest/poll_realtime.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${resources.schemas.bkk_transit.name}
+              secret_scope: ${var.secret_scope}
+              secret_key: api_key
+              poll_seconds: "30"
+              run_minutes: "55"
+              keep_raw_pb: "true"
+          timeout_seconds: 3540
+
+    bkk_pipeline_refresh:
+      name: bkk-transit-pipeline-refresh
+      schedule:
+        quartz_cron_expression: "0 15/30 * * * ?"  # every 30 min, offset from the poller
+        timezone_id: Europe/Budapest
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure: [ "${var.notify_email}" ]
+      tasks:
+        - task_key: refresh
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bkk_transit_pipeline.id}
+            full_refresh: false
