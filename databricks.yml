@@ -1,0 +1,37 @@
+# Databricks Asset Bundle: Futár Lake (BKK transit medallion pipeline)
+#   databricks bundle validate
+#   databricks bundle deploy -t dev
+#   databricks bundle run bkk_static_daily -t dev      # land the timetable once
+#   databricks bundle run bkk_realtime_poller -t dev   # start collecting realtime
+#   databricks bundle run bkk_transit_pipeline -t dev  # bronze -> silver -> gold
+bundle:
+  name: futar-lake
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for all tables and the landing volume
+    default: main
+  schema:
+    description: Schema (database) for the project
+    default: bkk_transit
+  secret_scope:
+    description: Secret scope holding the BKK OpenData API key
+    default: bkk
+  notify_email:
+    description: Where job failure alerts go
+    default: you@example.com
+
+targets:
+  dev:
+    mode: development  # prefixes resource names with [dev <user>] and pauses all schedules
+    default: true
+    variables:
+      schema: bkk_transit_dev
+
+  prod:
+    mode: production
+    variables:
+      schema: bkk_transit

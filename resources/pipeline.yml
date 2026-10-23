@@ -1,0 +1,21 @@
+resources:
+  pipelines:
+    bkk_transit_pipeline:
+      name: futar-lake
+      catalog: ${var.catalog}
+      schema: ${resources.schemas.bkk_transit.name}
+      serverless: true
+      channel: CURRENT
+      continuous: false  # triggered; the refresh job below decides the cadence
+      photon: true
+      # root_path is put on sys.path, which is what makes `import transit_lib` work
+      root_path: ../src/pipeline
+      libraries:
+        - glob:
+            include: ../src/pipeline/transformations/**
+      configuration:
+        bkk.landing_path: /Volumes/${var.catalog}/${resources.schemas.bkk_transit.name}/landing
+        bkk.on_time_early_s: "60"
+        bkk.on_time_late_s: "180"
+        bkk.hotspot_min_observations: "30"
+        spark.sql.session.timeZone: UTC  # GTFS time math in transit_lib assumes UTC instants
